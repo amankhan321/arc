@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AgentWallet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;450;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #e8ebef;
+    --paper-2: #f3f5f7;
+    --ink: #131820;
+    --muted: #5c6773;
+    --line: rgba(19, 24, 32, 0.12);
+    --graphite-1: #1d232b;
+    --graphite-2: #0d1014;
+    --teal: #14b09a;
+    --teal-soft: #1ecbb1;
+    --amber: #e0a13b;
+    --red: #d6492f;
+    --card-radius: 18px;
+    --display: "Space Grotesk", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+    --body: "Inter", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background:
+      radial-gradient(120% 80% at 90% -10%, rgba(20, 176, 154, 0.10), transparent 60%),
+      var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.45;
+    min-height: 100vh;
+  }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 24px 64px; }
+
+  .top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 26px;
+  }
+  .brand { font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; }
+  .brand .dot { color: var(--teal); }
+  .tagline { color: var(--muted); font-size: 13.5px; max-width: 46ch; }
+  .mode {
+    font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--line);
+  }
+  .mode.mock { color: var(--amber); border-color: rgba(224,161,59,0.4); background: rgba(224,161,59,0.08); }
+  .mode.live { color: var(--teal); border-color: rgba(20,176,154,0.4); background: rgba(20,176,154,0.08); }
+
+  .grid { display: grid; grid-template-columns: 420px 1fr; gap: 22px; align-items: start; }
+  @media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+
+  .stack { display: grid; gap: 22px; }
+
+  /* ---- THE CARD (hero) ---- */
+  .card {
+    position: relative; color: #eef1f3; border-radius: var(--card-radius);
+    background:
+      radial-gradient(140% 120% at 85% 0%, rgba(30,203,177,0.22), transparent 55%),
+      linear-gradient(155deg, var(--graphite-1), var(--graphite-2));
+    padding: 22px 22px 20px;
+    box-shadow: 0 18px 40px -20px rgba(13,16,20,0.7), inset 0 1px 0 rgba(255,255,255,0.06);
+    overflow: hidden;
+    animation: rise 0.6s cubic-bezier(0.2,0.7,0.2,1) both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .card::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.05) 50%, transparent 60%);
+  }
+  .card .row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .card .kicker {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: rgba(238,241,243,0.55);
+  }
+  .auth {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+    color: rgba(238,241,243,0.7);
+  }
+  .light { width: 9px; height: 9px; border-radius: 50%; background: #6b727b; box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+  .auth[data-s="pending"] .light { background: var(--amber); animation: pulse 1.1s ease-in-out infinite; }
+  .auth[data-s="ready"] .light { background: var(--teal-soft); box-shadow: 0 0 10px 1px rgba(30,203,177,0.7); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .limit-label { margin-top: 26px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(238,241,243,0.5); }
+  .limit-amt { font-family: var(--display); font-weight: 600; letter-spacing: -0.02em; font-size: 38px; margin-top: 2px; }
+  .limit-amt .unit { font-size: 16px; color: rgba(238,241,243,0.6); font-weight: 500; margin-left: 6px; }
+  .limit-sub { font-family: var(--mono); font-size: 11.5px; color: rgba(238,241,243,0.55); margin-top: 4px; }
+
+  .meter { margin-top: 14px; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.10); overflow: hidden; }
+  .meter > span { display: block; height: 100%; width: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--teal), var(--teal-soft));
+    transition: width 0.6s cubic-bezier(0.2,0.7,0.2,1); }
+  .meter.low > span { background: linear-gradient(90deg, var(--amber), #f0bd64); }
+
+  .holder { margin-top: 22px; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+  .holder .pan { font-family: var(--mono); font-size: 14px; letter-spacing: 0.06em; color: #eef1f3; }
+  .holder .who { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(238,241,243,0.5); margin-bottom: 3px; }
+
+  /* ---- panels ---- */
+  .panel { background: var(--paper-2); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .panel h2 { font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: 0.02em; margin: 0 0 4px; }
+  .panel .hint { color: var(--muted); font-size: 12.5px; margin: 0 0 14px; }
+
+  .ids { display: grid; gap: 10px; margin-bottom: 16px; }
+  .id { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+  .id .lbl { font-size: 12px; color: var(--muted); }
+  .id .val { font-family: var(--mono); font-size: 12.5px; }
+
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .controls .full { grid-column: 1 / -1; }
+
+  button {
+    font-family: var(--display); font-weight: 600; font-size: 13.5px; letter-spacing: 0.01em;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    padding: 11px 14px; border-radius: 10px; cursor: pointer;
+    transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  }
+  button:hover { transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+  button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+  button.primary { background: var(--ink); color: #f3f5f7; border-color: var(--ink); }
+  button.go { background: var(--teal); border-color: var(--teal); color: #06231e; }
+  button.danger { background: #fff; color: var(--red); border-color: rgba(214,73,47,0.4); }
+
+  .field { display: grid; gap: 5px; margin-bottom: 12px; }
+  .field label { font-size: 11.5px; color: var(--muted); letter-spacing: 0.02em; }
+  input[type="text"], input[type="number"] {
+    font-family: var(--mono); font-size: 13px; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px; padding: 10px 11px; background: #fff;
+  }
+  input:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+  .pay-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+
+  .ledger { display: grid; gap: 0; margin-top: 4px; }
+  .receipt {
+    display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline;
+    padding: 11px 0; border-bottom: 1px dashed var(--line);
+    animation: slidein 0.35s ease both;
+  }
+  @keyframes slidein { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .receipt .to { font-family: var(--mono); font-size: 12.5px; }
+  .receipt .amt { font-family: var(--mono); font-size: 13px; font-weight: 600; text-align: right; }
+  .receipt .meta { font-size: 11px; color: var(--muted); }
+  .receipt .meta a { color: var(--teal); text-decoration: none; }
+  .receipt .meta a:hover { text-decoration: underline; }
+  .receipt.blocked .to { color: var(--red); }
+  .receipt.blocked .amt { color: var(--red); }
+  .empty { color: var(--muted); font-size: 12.5px; padding: 14px 0; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: #f3f5f7; font-size: 13px; padding: 11px 16px; border-radius: 10px;
+    box-shadow: 0 14px 30px -12px rgba(0,0,0,0.5); opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease; max-width: 80vw;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { background: var(--red); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand">Agent<span class="dot">·</span>Wallet</div>
+      <p class="tagline">A debit card for your AI agent. Fund it, set a spending limit, let it pay on its own — and pull the plug anytime.</p>
+    </div>
+    <span id="mode" class="mode">…</span>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: the card + owner controls -->
+    <div class="stack">
+      <section class="card" aria-label="Agent card">
+        <div class="row">
+          <span class="kicker">Agent spending card · Arc Testnet</span>
+          <span class="auth" id="auth" data-s="none"><span class="light"></span><span id="authText">unauthorized</span></span>
+        </div>
+
+        <div class="limit-label">Limit remaining</div>
+        <div class="limit-amt"><span id="remaining">—</span><span class="unit">USDC</span></div>
+        <div class="limit-sub"><span id="spent">0.00</span> spent of <span id="budget">—</span> limit</div>
+
+        <div class="meter" id="meter"><span id="meterBar"></span></div>
+
+        <div class="holder">
+          <div>
+            <div class="who">Cardholder · agent</div>
+            <div class="pan" id="agentPan">····</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Owner controls</h2>
+        <p class="hint">You hold the funds and the keys. The agent only gets what you grant.</p>
+        <div class="ids">
+          <div class="id"><span class="lbl">Owner</span><span class="val" id="ownerAddr">—</span></div>
+          <div class="id"><span class="lbl">Agent</span><span class="val" id="agentAddr">—</span></div>
+        </div>
+        <div class="controls">
+          <button id="btnFund">Add funds</button>
+          <button id="btnAuthorize" class="go">Authorize agent</button>
+          <button id="btnRevoke" class="danger full">Revoke access</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- RIGHT: spend console + ledger -->
+    <div class="stack">
+      <section class="panel">
+        <h2>Agent payments</h2>
+        <p class="hint">What the agent does on its own once authorized. Every payment is checked against the limit before it's sent.</p>
+        <div class="field">
+          <label for="recipient">Pay to</label>
+          <input type="text" id="recipient" spellcheck="false" />
+        </div>
+        <div class="pay-row">
+          <div class="field" style="margin:0;">
+            <label for="amount">Amount (USDC)</label>
+            <input type="number" id="amount" min="0" step="0.5" value="1" />
+          </div>
+          <button id="btnPay" class="primary">Pay</button>
+        </div>
+        <div style="margin-top:12px;">
+          <button id="btnOverspend">Try to overspend the limit →</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Ledger</h2>
+        <p class="hint">Live feed of the agent's payments. Blocked attempts show too.</p>
+        <div class="ledger" id="ledger"><div class="empty">No payments yet.</div></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => Number(n).toFixed(2);
+  const short = (a) => (a && a.length > 14 ? a.slice(0, 8) + "…" + a.slice(-6) : a || "—");
+  const group = (a) => (a ? a.replace(/^0x/, "").match(/.{1,4}/g).slice(0, 6).join(" ") : "····");
+
+  let state = null;
+  let pollTimer = null;
+
+  function toast(msg, isErr) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.className = "toast show" + (isErr ? " err" : "");
+    clearTimeout(t._t);
+    t._t = setTimeout(() => (t.className = "toast"), 2600);
+  }
+
+  function render() {
+    if (!state) return;
+    $("mode").textContent = state.mock ? "Demo mode" : "Live · Arc Testnet";
+    $("mode").className = "mode " + (state.mock ? "mock" : "live");
+
+    $("remaining").textContent = fmt(state.remaining);
+    $("spent").textContent = fmt(state.spent);
+    $("budget").textContent = fmt(state.budget);
+    const pct = state.budget > 0 ? Math.max(0, (state.remaining / state.budget) * 100) : 0;
+    $("meterBar").style.width = pct + "%";
+    $("meter").className = "meter" + (pct <= 25 ? " low" : "");
+
+    const labels = { none: "unauthorized", pending: "authorizing…", ready: "authorized" };
+    $("auth").dataset.s = state.status;
+    $("authText").textContent = labels[state.status] || state.status;
+
+    $("ownerAddr").textContent = short(state.owner);
+    $("agentAddr").textContent = short(state.agent);
+    $("agentPan").textContent = group(state.agent);
+
+    const ready = state.status === "ready";
+    $("btnPay").disabled = !ready;
+    $("btnOverspend").disabled = !ready;
+    $("btnAuthorize").disabled = state.status !== "none";
+    $("btnRevoke").disabled = state.status === "none";
+
+    if (!$("recipient").value) $("recipient").value = state.recipientDefault || "";
+
+    renderLedger(state.history);
+
+    // keep polling while the delegate is finalizing
+    if (state.status === "pending" && !pollTimer) {
+      pollTimer = setInterval(refresh, 2000);
+    } else if (state.status !== "pending" && pollTimer) {
+      clearInterval(pollTimer); pollTimer = null;
+    }
+  }
+
+  function renderLedger(history) {
+    const el = $("ledger");
+    if (!history || !history.length) { el.innerHTML = '<div class="empty">No payments yet.</div>'; return; }
+    el.innerHTML = "";
+    [...history].reverse().forEach((r) => {
+      const row = document.createElement("div");
+      row.className = "receipt";
+      const link = r.explorerUrl ? `<a href="${r.explorerUrl}" target="_blank" rel="noopener">view tx ↗</a>` : "";
+      row.innerHTML =
+        `<div class="to">${short(r.recipient)}</div>` +
+        `<div class="amt">−${fmt(r.amount)}</div>` +
+        `<div class="meta">${new Date(r.at).toLocaleTimeString()} ${link}</div>`;
+      el.appendChild(row);
+    });
+  }
+
+  function addBlocked(message) {
+    const el = $("ledger");
+    if (el.querySelector(".empty")) el.innerHTML = "";
+    const row = document.createElement("div");
+    row.className = "receipt blocked";
+    row.innerHTML = `<div class="to">blocked</div><div class="amt">✕</div><div class="meta">${message}</div>`;
+    el.prepend(row);
+  }
+
+  async function refresh() {
+    const r = await fetch("/api/state");
+    state = await r.json();
+    render();
+  }
+
+  async function post(path, body) {
+    const r = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || "Request failed");
+    return data;
+  }
+
+  $("btnFund").onclick = async () => {
+    try { const s = await post("/api/fund", { amount: 100 }); state = s; render(); toast("Added 100 USDC to your balance"); }
+    catch (e) { toast(e.message, true); }
+  };
+  $("btnAuthorize").onclick = async () => {
+    try { const s = await post("/api/authorize"); state = s; render(); toast("Agent authorized — finalizing on Gateway"); }
+    catch (e) { toast(e.message, true); }
+  };
+  $("btnRevoke").onclick = async () => {
+    try { const s = await post("/api/revoke"); state = s; render(); toast("Access revoked"); }
+    catch (e) { toast(e.message, true); }
+  };
+  $("btnPay").onclick = async () => {
+    const amount = Number($("amount").value);
+    const recipient = $("recipient").value.trim();
+    try { const { state: s } = await post("/api/spend", { amount, recipient }); state = s; render(); toast(`Agent paid ${fmt(amount)} USDC`); }
+    catch (e) { addBlocked(e.message); toast(e.message, true); }
+  };
+  $("btnOverspend").onclick = async () => {
+    const recipient = $("recipient").value.trim();
+    const amount = (state ? state.budget : 0) + 1;
+    try { const { state: s } = await post("/api/spend", { amount, recipient }); state = s; render(); }
+    catch (e) { addBlocked(e.message); toast("Blocked: over the limit", true); }
+  };
+
+  // live feed
+  try {
+    const es = new EventSource("/api/events");
+    es.onmessage = (ev) => {
+      const m = JSON.parse(ev.data);
+      if (m.type === "spend" || m.type === "revoke" || m.type === "authorize" || m.type === "fund") refresh();
+      if (m.type === "blocked") addBlocked(m.message);
+    };
+  } catch (_) {}
+
+  refresh();
+</script>
+</body>
+</html>

@@ -58,6 +58,19 @@ You'll need:
 4. Agent **tries to exceed the cap** — blocked before it hits the chain.
 5. Owner revokes the agent.
 
+## Dashboard
+
+A visual control panel for the whole flow — the agent's card with a depleting spend limit, owner controls (Add funds / Authorize / Revoke), an agent payment console, and a live ledger.
+
+```bash
+npm run dashboard
+# → http://localhost:5173
+```
+
+**Demo mode is on by default** when no keys are set, so the dashboard is fully clickable without faucet USDC — every action runs against a simulated wallet (clearly labeled "Demo mode" in the UI), with the delegate finalizing after a few seconds and synthetic tx hashes in the ledger. Perfect for a walkthrough video.
+
+To run it **live** against Arc Testnet, set `OWNER_PRIVATE_KEY` and `AGENT_PRIVATE_KEY` in `.env` (or set `DEMO_MODE=1` to force mock even with keys present). Keys live only on the server — the browser never sees them; it just calls the local API.
+
 ## Using the library directly
 
 ```ts
