@@ -5,6 +5,10 @@
   "description": "A spending-capped USDC wallet for AI agents, built on Arc Testnet with Circle App Kit (Gateway / Unified Balance delegation).",
   "type": "module",
   "scripts": {
+    "build:contracts": "node scripts/compile.cjs",
+    "test:contracts": "node scripts/compile.cjs && node scripts/test.mjs",
+    "deploy:contracts": "node scripts/deploy.mjs",
+    "interact": "node scripts/interact.mjs",
     "demo": "tsx src/demo.ts",
     "dashboard": "tsx src/server.ts",
     "typecheck": "tsc --noEmit"
@@ -19,6 +23,8 @@
   "devDependencies": {
     "@types/express": "^4.17.25",
     "@types/node": "^22.0.0",
+    "ganache": "^7.9.2",
+    "solc": "^0.8.35",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }

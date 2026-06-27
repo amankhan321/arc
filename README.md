@@ -19,21 +19,50 @@ The on-chain delegation is Circle App Kit's Gateway primitive (`addDelegate` →
 
 ## How it works
 
+There are two layers in this repo:
+
+**1. `AgentAllowance` — the on-chain contract (the real product).** A Solidity contract deployed to Arc Testnet that escrows USDC and enforces each agent's spending cap *on-chain*. The owner funds it and calls `authorizeAgent(agent, cap)`; the agent calls `spend(to, amount, memo)`, and the contract **reverts if the payment would exceed the cap** — the limit is enforced by the chain, not by app code. The owner can `revokeAgent` or `withdraw` at any time. Built on Arc's native USDC (6-decimal ERC-20 interface); payments carry an on-chain `memo`.
+
+**2. App Kit / Gateway path (`src/`).** An earlier TypeScript implementation using Circle's Unified Balance Kit delegation, kept as an alternative. The on-chain contract is the canonical build.
+
+### The contract
+
 ```
- ┌────────┐  deposit + authorize(budget)   ┌─────────────┐
- │ Human  │ ─────────────────────────────► │ AgentWallet │
- │ owner  │ ◄───────────── revoke ──────── │   (cap layer)│
- └────────┘                                 └──────┬──────┘
-                                                   │ spend() — checked vs budget
-                                                   ▼
-                                         ┌────────────────────┐
-                                         │  AI agent (delegate)│ ──► pays a service
-                                         └────────────────────┘
+contracts/AgentAllowance.sol   the spending-cap contract
+contracts/MockUSDC.sol         6-decimal ERC-20 for local tests
+scripts/compile.cjs            solc-js compile → artifacts/
+scripts/test.mjs               local-EVM test suite (ganache + viem)
+scripts/deploy.mjs             deploy to Arc Testnet
+scripts/interact.mjs           drive the deployed contract end to end
 ```
 
-The `AgentWallet` class (`src/agentWallet.ts`) wraps App Kit's `unifiedBalance` and tracks total spent against the cap. Any `spend()` that would exceed the remaining budget is rejected locally and never reaches the chain.
+Build and test it locally (no network or keys needed — runs on an in-process EVM):
 
-## Quickstart
+```bash
+npm run test:contracts
+```
+
+This compiles the contract and runs 24 checks covering deposits, the cap math, access control, treasury limits, revocation, and — importantly — that a rejected over-cap spend moves **zero** funds.
+
+### Deploy to Arc Testnet
+
+```bash
+cp .env.example .env          # set DEPLOYER_PRIVATE_KEY (funded from the Circle Faucet)
+npm run deploy:contracts      # prints the contract address + Arcscan link
+```
+
+Then drive it with real USDC:
+
+```bash
+# set CONTRACT_ADDRESS, OWNER_PRIVATE_KEY, AGENT_PRIVATE_KEY in .env
+npm run interact
+```
+
+`interact` runs the full flow on-chain — deposit → authorize → agent pays → agent over-spends (reverts) → revoke — and prints an Arcscan tx link for each step. Those tx hashes are your proof of a working Arc app.
+
+> USDC is 6 decimals and amounts in the contract are raw base units (1 USDC = 1_000_000). The scripts handle the conversion.
+
+## App Kit / Gateway path
 
 ```bash
 npm install
