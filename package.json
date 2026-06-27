@@ -1,0 +1,22 @@
+{
+  "name": "agentwallet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A spending-capped USDC wallet for AI agents, built on Arc Testnet with Circle App Kit (Gateway / Unified Balance delegation).",
+  "type": "module",
+  "scripts": {
+    "demo": "tsx src/demo.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@circle-fin/app-kit": "1.8.1",
+    "@circle-fin/adapter-viem-v2": "1.12.1",
+    "dotenv": "^16.4.5",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
