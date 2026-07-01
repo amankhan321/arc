@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pay with USDC · Arc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+<style>
+  :root{
+    --void:#0A0E16;
+    --void-2:#0d1220;
+    --slip:#F5F2EA;
+    --slip-2:#EFEBE0;
+    --line:rgba(20,24,31,.12);
+    --ink:#15181E;
+    --ink-soft:#57534A;
+    --ink-faint:#8b8577;
+    --arc:#3D6BFF;
+    --arc-press:#2f55d6;
+    --settle:#12A150;
+    --danger:#C6462E;
+    --radius:6px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Space Grotesk",system-ui,sans-serif;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #131a2b 0%, transparent 60%),
+      var(--void);
+    color:#e9ecf2;
+    min-height:100dvh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px 16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .stage{width:100%;max-width:392px}
+
+  /* wallet status bar (outside the slip) */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    margin:0 4px 14px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:#7e879c;
+  }
+  .brand{display:flex;align-items:center;gap:8px;font-weight:600}
+  .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--arc);box-shadow:0 0 12px var(--arc)}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;padding:5px 10px;
+    border:1px solid rgba(255,255,255,.09);border-radius:999px;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.04em;
+    text-transform:none;color:#aab3c7;background:rgba(255,255,255,.02);
+    cursor:default;transition:border-color .2s,color .2s;
+  }
+  .chip .pip{width:6px;height:6px;border-radius:50%;background:#5a6478;transition:background .2s}
+  .chip.live .pip{background:var(--settle);box-shadow:0 0 8px var(--settle)}
+  .chip.warn .pip{background:#e0a92e;box-shadow:0 0 8px #e0a92e}
+
+  /* the slip */
+  .slip{
+    position:relative;background:var(--slip);color:var(--ink);
+    border-radius:var(--radius) var(--radius) 0 0;
+    padding:26px 26px 30px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.7),0 2px 0 rgba(255,255,255,.4) inset;
+  }
+  .slip-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding-bottom:16px;margin-bottom:22px;border-bottom:1px dashed var(--line);
+  }
+  .slip-head .k{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
+  .slip-head .v{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-soft)}
+
+  /* amount hero */
+  .amount-label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:6px}
+  .amount-row{display:flex;align-items:baseline;gap:4px;border-bottom:2px solid var(--ink);padding-bottom:8px}
+  .cur{font-family:"IBM Plex Mono",monospace;font-size:26px;color:var(--ink-soft);font-weight:500;transform:translateY(-2px)}
+  #amount{
+    flex:1;min-width:0;border:none;background:transparent;outline:none;
+    font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:46px;line-height:1;
+    color:var(--ink);letter-spacing:-.02em;
+  }
+  #amount::placeholder{color:#cfc9ba}
+  .unit{font-family:"Space Grotesk";font-weight:600;font-size:15px;color:var(--ink-soft);letter-spacing:.02em}
+  .bal{display:flex;justify-content:space-between;margin-top:10px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-soft)}
+  .bal .max{cursor:pointer;color:var(--arc);font-weight:600;letter-spacing:.02em}
+  .bal .max:hover{text-decoration:underline}
+
+  /* fields */
+  .field{margin-top:20px}
+  .field label{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;margin-bottom:7px}
+  .field input{
+    width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:var(--radius);
+    background:#fbf9f4;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink);
+    outline:none;transition:border-color .15s,box-shadow .15s;
+  }
+  .field input:focus{border-color:var(--arc);box-shadow:0 0 0 3px rgba(61,107,255,.14)}
+  .field input::placeholder{color:#b8b2a3}
+  .hint{margin-top:7px;font-size:11.5px;color:var(--danger);min-height:14px;font-family:"IBM Plex Mono",monospace}
+  .hint.ok{color:var(--ink-faint)}
+
+  /* action */
+  .btn{
+    width:100%;margin-top:24px;padding:16px;border:none;border-radius:var(--radius);
+    font-family:"Space Grotesk";font-weight:600;font-size:15px;letter-spacing:.01em;
+    color:#fff;background:var(--arc);cursor:pointer;
+    transition:background .15s,transform .05s,opacity .15s;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+  }
+  .btn:hover:not(:disabled){background:var(--arc-press)}
+  .btn:active:not(:disabled){transform:translateY(1px)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.ghost{background:transparent;color:var(--arc);border:1px solid var(--line)}
+  .btn.ghost:hover:not(:disabled){background:#fbf9f4}
+  .btn .spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .foot{margin-top:16px;text-align:center;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);line-height:1.6}
+  .foot b{color:var(--ink-soft);font-weight:600}
+
+  /* torn ticket edge */
+  .tear{height:14px;background:var(--slip);
+    -webkit-mask:radial-gradient(9px at 50% 0,#0000 97%,#000) 50% 0/19px 100% repeat-x;
+            mask:radial-gradient(9px at 50% 0,#0000 97%,#000) 50% 0/19px 100% repeat-x;}
+
+  /* receipt state */
+  .receipt-head{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+  .stamp{
+    display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;
+    background:rgba(18,161,80,.1);color:var(--settle);border:1px solid rgba(18,161,80,.3);
+    font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  }
+  .stamp svg{width:13px;height:13px}
+  .rc-amount{font-family:"IBM Plex Mono",monospace;font-size:40px;font-weight:600;color:var(--ink);letter-spacing:-.02em;margin:4px 0 2px}
+  .rc-amount span{font-size:16px;color:var(--ink-soft);font-weight:500;font-family:"Space Grotesk"}
+  .rc-list{margin-top:20px;border-top:1px dashed var(--line);padding-top:16px;display:grid;gap:12px}
+  .rc-row{display:flex;justify-content:space-between;align-items:baseline;gap:14px}
+  .rc-row .rk{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;white-space:nowrap}
+  .rc-row .rv{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink);text-align:right;word-break:break-all}
+  .rc-row a.rv{color:var(--arc);text-decoration:none}
+  .rc-row a.rv:hover{text-decoration:underline}
+  .memo-note{margin-top:14px;padding:11px 13px;background:#fbf9f4;border:1px dashed var(--line);border-radius:var(--radius);font-size:12.5px;color:var(--ink-soft);line-height:1.5}
+  .memo-note b{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px;font-family:"Space Grotesk"}
+
+  .hidden{display:none!important}
+  .fade{animation:fade .35s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  @media (max-width:400px){
+    .slip{padding:22px 20px 26px}
+    #amount{font-size:40px}
+  }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <div class="topbar">
+      <div class="brand"><span class="dot"></span>Arc · USDC</div>
+      <button id="chip" class="chip" title="Wallet status"><span class="pip"></span><span id="chipText">Not connected</span></button>
+    </div>
+
+    <!-- ===== PAY SLIP ===== -->
+    <section id="payCard" class="slip fade">
+      <div class="slip-head">
+        <span class="k">Payment</span>
+        <span class="v">Arc Testnet</span>
+      </div>
+
+      <div class="amount-label">Amount</div>
+      <div class="amount-row">
+        <span class="cur">$</span>
+        <input id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off" />
+        <span class="unit">USDC</span>
+      </div>
+      <div class="bal">
+        <span id="balText">Balance —</span>
+        <span id="maxBtn" class="max hidden">Max</span>
+      </div>
+
+      <div class="field">
+        <label for="to">Pay to</label>
+        <input id="to" placeholder="0x… recipient address" autocomplete="off" spellcheck="false" />
+        <div id="toHint" class="hint"></div>
+      </div>
+
+      <div class="field">
+        <label for="memo">Note <span style="text-transform:none;letter-spacing:0;color:var(--ink-faint)">— optional</span></label>
+        <input id="memo" placeholder="What's this payment for?" maxlength="80" autocomplete="off" />
+      </div>
+
+      <button id="action" class="btn">Connect wallet</button>
+      <div id="actionHint" class="hint ok" style="text-align:center;margin-top:12px"></div>
+
+      <div class="foot">
+        Non-custodial · funds move wallet&nbsp;→&nbsp;wallet<br />
+        via <b>0x3600…0000</b> · gas paid in USDC
+      </div>
+    </section>
+    <div id="payTear" class="tear fade"></div>
+
+    <!-- ===== RECEIPT ===== -->
+    <section id="receiptCard" class="slip hidden">
+      <div class="receipt-head">
+        <span class="stamp">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Settled
+        </span>
+      </div>
+      <div class="amount-label">Paid</div>
+      <div class="rc-amount"><span id="rcAmt">0.00</span> <span>USDC</span></div>
+
+      <div class="rc-list">
+        <div class="rc-row"><span class="rk">From</span><span id="rcFrom" class="rv"></span></div>
+        <div class="rc-row"><span class="rk">To</span><span id="rcTo" class="rv"></span></div>
+        <div class="rc-row"><span class="rk">Tx</span><a id="rcTx" class="rv" target="_blank" rel="noopener"></a></div>
+        <div class="rc-row"><span class="rk">Block</span><span id="rcBlock" class="rv"></span></div>
+        <div class="rc-row"><span class="rk">Time</span><span id="rcTime" class="rv"></span></div>
+      </div>
+
+      <div id="rcMemoWrap" class="memo-note hidden"><b>Note</b><span id="rcMemo"></span></div>
+
+      <button id="again" class="btn ghost" style="margin-top:22px">New payment</button>
+      <div class="foot">Receipt generated locally · verify anytime on <b>Arcscan</b></div>
+    </section>
+    <div id="receiptTear" class="tear hidden"></div>
+  </main>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- Arc Testnet constants ----
+  const CHAIN_ID_DEC = 5042002;
+  const CHAIN_ID_HEX = "0x" + CHAIN_ID_DEC.toString(16); // 0x4cef52
+  const RPC = "https://rpc.testnet.arc.network";
+  const EXPLORER = "https://testnet.arcscan.app";
+  const USDC = "0x3600000000000000000000000000000000000000";
+  const ARC_PARAMS = {
+    chainId: CHAIN_ID_HEX,
+    chainName: "Arc Testnet",
+    nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
+    rpcUrls: [RPC],
+    blockExplorerUrls: [EXPLORER]
+  };
+  const ERC20 = [
+    "function decimals() view returns (uint8)",
+    "function balanceOf(address) view returns (uint256)",
+    "function transfer(address to, uint256 amount) returns (bool)"
+  ];
+
+  // ---- state ----
+  let provider, signer, account = null, decimals = 6, balance = 0n, busy = false;
+
+  // ---- els ----
+  const $ = id => document.getElementById(id);
+  const chip = $("chip"), chipText = $("chipText");
+  const amountEl = $("amount"), toEl = $("to"), memoEl = $("memo");
+  const balText = $("balText"), maxBtn = $("maxBtn");
+  const toHint = $("toHint"), actionHint = $("actionHint"), action = $("action");
+  const payCard = $("payCard"), payTear = $("payTear");
+  const receiptCard = $("receiptCard"), receiptTear = $("receiptTear");
+
+  const short = a => a ? a.slice(0,6) + "…" + a.slice(-4) : "";
+  const hasWallet = () => typeof window.ethereum !== "undefined";
+
+  function setChip(state, text){
+    chip.className = "chip" + (state ? " " + state : "");
+    chipText.textContent = text;
+  }
+
+  // ---- connect flow ----
+  async function connect(){
+    if(!hasWallet()){
+      actionHint.classList.remove("ok");
+      actionHint.textContent = "No EVM wallet found. Open this page with MetaMask installed.";
+      return;
+    }
+    try{
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      await ensureArc();
+      provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      account = await signer.getAddress();
+      await loadBalance();
+      wireLive();
+      render();
+    }catch(e){ handleErr(e); }
+  }
+
+  async function ensureArc(){
+    const current = await window.ethereum.request({ method: "eth_chainId" });
+    if(current === CHAIN_ID_HEX) return;
+    try{
+      await window.ethereum.request({ method: "wallet_switchEthereumChain", params:[{ chainId: CHAIN_ID_HEX }] });
+    }catch(err){
+      if(err.code === 4902 || (err.data && err.data.originalError && err.data.originalError.code === 4902)){
+        await window.ethereum.request({ method: "wallet_addEthereumChain", params:[ARC_PARAMS] });
+      } else { throw err; }
+    }
+  }
+
+  async function loadBalance(){
+    try{
+      const c = new ethers.Contract(USDC, ERC20, provider);
+      decimals = Number(await c.decimals());       // read decimals — never hardcode (6 on ERC20 iface)
+      balance = await c.balanceOf(account);
+      balText.textContent = "Balance " + fmt(balance) + " USDC";
+      maxBtn.classList.remove("hidden");
+    }catch(e){
+      balText.textContent = "Balance unavailable";
+    }
+  }
+
+  function fmt(raw){
+    const s = ethers.formatUnits(raw, decimals);
+    const n = Number(s);
+    return n.toLocaleString(undefined,{ maximumFractionDigits: 4 });
+  }
+
+  function wireLive(){
+    if(!window.ethereum || window.ethereum.__arcWired) return;
+    window.ethereum.__arcWired = true;
+    window.ethereum.on("accountsChanged", () => location.reload());
+    window.ethereum.on("chainChanged", () => location.reload());
+  }
+
+  // ---- validation + render ----
+  function validAddr(a){ try{ return ethers.isAddress(a); }catch{ return false; } }
+
+  function parseAmt(){
+    const v = (amountEl.value||"").trim();
+    if(!v) return null;
+    if(!/^\d*\.?\d*$/.test(v)) return null;
+    try{ const p = ethers.parseUnits(v, decimals); return p > 0n ? p : null; }catch{ return null; }
+  }
+
+  function render(){
+    if(busy) return;
+    if(!account){
+      setChip("", "Not connected");
+      action.textContent = "Connect wallet";
+      action.disabled = false;
+      return;
+    }
+    setChip("live", short(account) + " · Arc");
+
+    // recipient hint
+    const to = toEl.value.trim();
+    if(to && !validAddr(to)){ toHint.classList.remove("ok"); toHint.textContent = "Not a valid address."; }
+    else if(to && account && to.toLowerCase() === account.toLowerCase()){ toHint.classList.remove("ok"); toHint.textContent = "That's your own address."; }
+    else { toHint.textContent = ""; }
+
+    const amt = parseAmt();
+    const okAddr = validAddr(to) && to.toLowerCase() !== account.toLowerCase();
+    const enough = amt !== null && amt <= balance;
+
+    actionHint.classList.add("ok");
+    if(amt !== null && amt > balance){ actionHint.classList.remove("ok"); actionHint.textContent = "Amount exceeds your balance."; }
+    else actionHint.textContent = "";
+
+    if(!amt){ action.textContent = "Enter an amount"; action.disabled = true; }
+    else if(!okAddr){ action.textContent = "Add a recipient"; action.disabled = true; }
+    else if(!enough){ action.textContent = "Insufficient balance"; action.disabled = true; }
+    else { action.textContent = "Pay " + amountEl.value.trim() + " USDC"; action.disabled = false; }
+  }
+
+  // ---- pay ----
+  async function pay(){
+    const amt = parseAmt();
+    const to = toEl.value.trim();
+    if(!amt || !validAddr(to)) return;
+    busy = true;
+    action.disabled = true;
+    action.innerHTML = '<span class="spin"></span> Confirm in wallet…';
+    actionHint.classList.add("ok"); actionHint.textContent = "";
+    try{
+      const c = new ethers.Contract(USDC, ERC20, signer);
+      const tx = await c.transfer(to, amt);
+      action.innerHTML = '<span class="spin"></span> Settling on Arc…';
+      const rcpt = await tx.wait();
+      const blk = await provider.getBlock(rcpt.blockNumber);
+      showReceipt({
+        amount: amountEl.value.trim(),
+        from: account, to,
+        hash: tx.hash,
+        block: rcpt.blockNumber,
+        time: blk ? new Date(blk.timestamp*1000) : new Date(),
+        memo: memoEl.value.trim()
+      });
+    }catch(e){
+      busy = false;
+      handleErr(e);
+      render();
+    }
+  }
+
+  function handleErr(e){
+    actionHint.classList.remove("ok");
+    const code = e && (e.code || (e.info && e.info.error && e.info.error.code));
+    if(code === 4001 || code === "ACTION_REJECTED") actionHint.textContent = "You cancelled the request.";
+    else if(e && /insufficient/i.test(e.message||"")) actionHint.textContent = "Not enough USDC to cover amount + gas.";
+    else actionHint.textContent = (e && e.shortMessage) || (e && e.message) || "Something went wrong.";
+    if(action.querySelector(".spin")){ action.disabled = false; render(); }
+  }
+
+  function showReceipt(r){
+    busy = false;
+    $("rcAmt").textContent = Number(r.amount).toLocaleString(undefined,{ minimumFractionDigits: 2, maximumFractionDigits: 6 });
+    $("rcFrom").textContent = short(r.from);
+    $("rcTo").textContent = short(r.to);
+    const txa = $("rcTx"); txa.textContent = short(r.hash) + " ↗"; txa.href = EXPLORER + "/tx/" + r.hash;
+    $("rcBlock").textContent = "#" + r.block;
+    $("rcTime").textContent = r.time.toLocaleString(undefined,{ dateStyle:"medium", timeStyle:"short" });
+    if(r.memo){ $("rcMemo").textContent = r.memo; $("rcMemoWrap").classList.remove("hidden"); }
+    else $("rcMemoWrap").classList.add("hidden");
+
+    payCard.classList.add("hidden"); payTear.classList.add("hidden");
+    receiptCard.classList.remove("hidden"); receiptCard.classList.add("fade");
+    receiptTear.classList.remove("hidden"); receiptTear.classList.add("fade");
+  }
+
+  function reset(){
+    amountEl.value=""; memoEl.value=""; toEl.value=""; toHint.textContent="";
+    receiptCard.classList.add("hidden"); receiptTear.classList.add("hidden");
+    payCard.classList.remove("hidden"); payTear.classList.remove("hidden");
+    loadBalance();
+    render();
+  }
+
+  // ---- events ----
+  action.addEventListener("click", () => { if(!account) connect(); else pay(); });
+  $("again").addEventListener("click", reset);
+  chip.addEventListener("click", () => { if(!account) connect(); });
+  amountEl.addEventListener("input", render);
+  toEl.addEventListener("input", render);
+  maxBtn.addEventListener("click", () => { amountEl.value = ethers.formatUnits(balance, decimals); render(); });
+
+  // ---- init ----
+  if(!hasWallet()){
+    setChip("warn", "No wallet");
+    actionHint.classList.remove("ok");
+    actionHint.textContent = "Preview mode — connect a wallet to send real testnet USDC.";
+  } else {
+    setChip("", "Not connected");
+  }
+  render();
+})();
+</script>
+</body>
+</html>
